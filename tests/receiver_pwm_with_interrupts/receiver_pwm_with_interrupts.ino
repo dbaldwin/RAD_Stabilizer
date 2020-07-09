@@ -18,9 +18,9 @@ void loop() {
   
   Serial.print("Throttle: ");
   Serial.print(receiver_ch_1);
-  Serial.print("\tLeft Elevon: ");
+  Serial.print("\tCH2: ");
   Serial.print(receiver_ch_2);
-  Serial.print("\tRight Elevon: ");
+  Serial.print("\tCH3: ");
   Serial.println(receiver_ch_3);
   
 }
