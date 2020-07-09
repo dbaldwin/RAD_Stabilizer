@@ -30,8 +30,14 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-Servo leftServo; // left elevon
-Servo rightServo; // right elevon
+// Servos connected to elevons
+Servo ch2Servo; 
+Servo ch3Servo;
+
+byte last_ch1, last_ch2, last_ch3, last_ch5; // throttle, aileron, elevator, auxiliary
+volatile int receiver_ch_1, receiver_ch_2, receiver_ch_3, receiver_ch_5; // store values for each channel
+unsigned long ch1_timer, ch2_timer, ch3_timer, ch5_timer, current_time;
+volatile bool stabilize_on = false;
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -49,6 +55,16 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
+
+
+  // Setup interrupts for Arduino Micro
+  // Refer to this for interrupt pins:
+  // https://www.theengineeringprojects.com/wp-content/uploads/2018/09/introduction-to-Arduino-Micro-3-3.png
+  PCICR |= (1 << PCIE0);    // set PCIE0 to enable PCMSK0 scan
+  PCMSK0 |= (1 << PCINT4);  // set PCINT4 (digital input 8 - ch1 throttle)
+  PCMSK0 |= (1 << PCINT5);  // set PCINT5 (digital input 9 - ch2 left elevon)
+  PCMSK0 |= (1 << PCINT6);  // set PCINT6 (digital input 10 - ch3 right elevon)
+  PCMSK0 |= (1 << PCINT7);  // set PCINT7 (digital input 11 - ch5 auxiliary switch)
 
   Wire.begin();
   Wire.setClock(400000);
@@ -111,11 +127,13 @@ void setup() {
     Serial.println(F(")"));
   }
 
-  leftServo.attach(5); 
-  rightServo.attach(6);
+  ch2Servo.attach(5); 
+  ch3Servo.attach(6);
 
-  leftServo.write(0);
-  rightServo.write(0);
+  // This should be center position
+  ch2Servo.write(90);
+  ch3Servo.write(90);
+
 }
 
 
@@ -173,15 +191,95 @@ void loop() {
     Serial.print("\t");
     Serial.println(ypr[1] * 180 / M_PI);*/
 
-    float roll_angle = ypr[1] * 180 / M_PI;
-    float roll_servo = map(roll_angle, -90, 90, 0, 180);
+    //float roll_angle = ypr[1] * 180 / M_PI;
+    //float roll_servo = map(roll_angle, -90, 90, 0, 180);
 
-    Serial.print(roll_angle);
-    Serial.print("\t");
-    Serial.println(roll_servo);
+//    Serial.print(roll_angle);
+//    Serial.print("\t");
+//    Serial.println(roll_servo);
+//    
+//    rightServo.write(roll_servo);
+//    leftServo.write(roll_servo);
 
+//    Serial.print("Throttle: ");
+//    Serial.print(receiver_ch_1);
+//    Serial.print("\tCH2: ");
+//    Serial.print(receiver_ch_2);
+//    Serial.print("\tCH3: ");
+//    Serial.println(receiver_ch_3);
+
+    // We're in stablize mode because the auxiliary channel is high
+    if(receiver_ch_5 > 1500) {
+
+      // Let's use the gyro to stabilize the servos
+      Serial.println("we should be stabilizing");
+
+    // We're in manual mode so just let the values pass through to the servos
+    } else {
+
+      // We'll take the channel values and remap them to servo ranges
+      float ch2 = map(receiver_ch_2, 1000, 2000, 0, 180);
+      float ch3 = map(receiver_ch_3, 1000, 2000, 0, 180);
+
+      // Write these values to the servo
+      ch2Servo.write(ch2);
+      ch3Servo.write(ch3);
+      
+    }
     
-    rightServo.write(roll_servo);
-    leftServo.write(roll_servo);
   }
+}
+
+// For port numbers with Arduino Micro refer to these:
+// https://content.arduino.cc/assets/Pinout-Micro_latest.png
+// https://www.theengineeringprojects.com/wp-content/uploads/2018/09/introduction-to-Arduino-Micro-3-3.png
+ISR(PCINT0_vect) {
+
+  current_time = micros();
+
+  // CH1 (throttle) = digital pin 8 (PB4)
+  if(PINB & B00010000) {                                 // Pin 8 (PB4) is high
+    if(last_ch1 == 0){                                   // Input 8 went high
+      last_ch1 = 1;                                      // Store current state
+      ch1_timer = current_time;                          // Set the timer
+    }
+  } else if(last_ch1 == 1){                              // Input 8 is not high and changed from 1 to 0
+    last_ch1 = 0;                                        // Remember current input state
+    receiver_ch_1 = current_time - ch1_timer;            // Channel 1 is current_time - timer_1
+  }
+
+  // CH2 (left elevon) = digital pin 9 (PB5)
+  if(PINB & B00100000) {                                 // Is input 9 high?
+    if(last_ch2 == 0){                                   // Input 9 changed from 0 to 1
+      last_ch2 = 1;                                      // Remember current input state
+      ch2_timer = current_time;                          // Set timer_2 to current_time
+    }
+  } else if(last_ch2 == 1){                              // Input 9 is not high and changed from 1 to 0
+    last_ch2 = 0;                                        // Remember current input state
+    receiver_ch_2 = current_time - ch2_timer;            // Channel 2 is current_time - timer_2
+  }
+
+  // CH3 (right elevon) = digital pin 10 (PB6)
+  if(PINB & B01000000) {                                 // Is input 10 high?
+    if(last_ch3 == 0){                                   // Input 10 changed from 0 to 1
+      last_ch3 = 1;                                      // Remember current input state
+      ch3_timer = current_time;                          // Set timer_3 to current_time
+    }
+  } else if(last_ch3 == 1){                              // Input 10 is not high and changed from 1 to 0
+    last_ch3 = 0;                                        // Remember current input state
+    receiver_ch_3 = current_time - ch3_timer;            // Channel 3 is current_time - timer_3
+  }
+
+  // CH5 (auxiliary) = digital pin 11 (PB7)
+  if(PINB & B10000000) {                                 // Is input 11 high?
+    if(last_ch5 == 0){                                   // Input 11 changed from 0 to 1
+      last_ch5 = 1;                                      // Remember current input state
+      ch5_timer = current_time;                          // Set timer_5 to current_time
+    }
+  } else if(last_ch5 == 1){                              // Input 11 is not high and changed from 1 to 0
+    last_ch5 = 0;                                        // Remember current input state
+    receiver_ch_5 = current_time - ch5_timer;            // Channel 5 is current_time - timer_5
+  }
+  
+  
 }
