@@ -191,39 +191,45 @@ void loop() {
     Serial.print("\t");
     Serial.println(ypr[1] * 180 / M_PI);*/
 
-    //float roll_angle = ypr[1] * 180 / M_PI;
-    //float roll_servo = map(roll_angle, -90, 90, 0, 180);
-
-//    Serial.print(roll_angle);
-//    Serial.print("\t");
-//    Serial.println(roll_servo);
-//    
-//    rightServo.write(roll_servo);
-//    leftServo.write(roll_servo);
-
-//    Serial.print("Throttle: ");
-//    Serial.print(receiver_ch_1);
-//    Serial.print("\tCH2: ");
-//    Serial.print(receiver_ch_2);
-//    Serial.print("\tCH3: ");
-//    Serial.println(receiver_ch_3);
-
     // We're in stablize mode because the auxiliary channel is high
     if(receiver_ch_5 > 1500) {
 
       // Let's use the gyro to stabilize the servos
-      Serial.println("we should be stabilizing");
+      float roll_angle = ypr[1] * 180 / M_PI * -1; // Radians to degrees
+      float pitch_angle = ypr[2] * 180 / M_PI; // Radians to degrees
+      float roll_signal = map(roll_angle, -90, 90, 0, 180);
+      float pitch_signal = map(pitch_angle, -90, 90, 0, 180);
 
-    // We're in manual mode so just let the values pass through to the servos
+      float ch3_mix = abs((roll_signal + pitch_signal) / 2);
+
+      if (pitch_angle > 0) {
+        pitch_signal = map(pitch_angle, -90, 90, 180, 0);
+      } else if (pitch_angle < 0) {
+        pitch_signal = map(pitch_angle, 90, -90, 0, 180);
+      }
+
+      float ch2_mix = abs((roll_signal + pitch_signal) / 2);
+
+      Serial.print("Pitch: ");
+      Serial.print(pitch_signal);
+      Serial.print("\t Roll: ");
+      Serial.print(roll_signal);
+      Serial.print("\t Ch2 mix: ");
+      Serial.print(ch2_mix);
+      Serial.print("\t Ch3 mix: ");
+      Serial.println(ch3_mix);
+
+      ch2Servo.write(ch2_mix);
+      ch3Servo.write(ch3_mix);
+
+    // We're in manual mode so let the values pass through to the servos
     } else {
 
-      // We'll take the channel values and remap them to servo ranges
-      float ch2 = map(receiver_ch_2, 1000, 2000, 0, 180);
-      float ch3 = map(receiver_ch_3, 1000, 2000, 0, 180);
+      float invert_ch_2 = map(receiver_ch_2, 1000, 2000, 2000, 1000);
 
       // Write these values to the servo
-      ch2Servo.write(ch2);
-      ch3Servo.write(ch3);
+      ch2Servo.writeMicroseconds(invert_ch_2);
+      ch3Servo.writeMicroseconds(receiver_ch_3);
       
     }
     
