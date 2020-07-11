@@ -182,60 +182,75 @@ void loop() {
       fifoCount -= packetSize;
     }
 
-    // display Euler angles in degrees
+    // Get Euler angles in degrees
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    /*Serial.print("pitch/roll\t");
-    Serial.print(ypr[2] * 180 / M_PI);
-    Serial.print("\t");
-    Serial.println(ypr[1] * 180 / M_PI);*/
 
     // We're in stablize mode because the auxiliary channel is high
-    receiver_ch_5 = 1501;
-    
     if(receiver_ch_5 > 1500) {
 
-      // Let's use the gyro to stabilize the servos
-      float roll_angle = ypr[1] * 180 / M_PI * -1; // Radians to degrees
-      float pitch_angle = ypr[2] * 180 / M_PI; // Radians to degrees
-      float roll_signal = map(roll_angle, -90, 90, 0, 180);
-      float pitch_signal = map(pitch_angle, -90, 90, 0, 180);
+      // Manual input is being given
+      if(receiver_ch_2 < 1480 || receiver_ch_2 > 1520 || receiver_ch_3 < 1480 || receiver_ch_3 > 1520) {
+        
+        applyManualInput();
 
-      float ch3_mix = abs((roll_signal + pitch_signal) * 0.5);
+      // Stabilize
+      } else {
 
-      if (pitch_angle > 0) {
-        pitch_signal = map(pitch_angle, 90, -90, 0, 180);
-      } else if (pitch_angle < 0) {
-        pitch_signal = map(pitch_angle, -90, 90, 180, 0);
+        // Let's use the gyro to stabilize the servos
+        float roll_angle = ypr[1] * 180 / M_PI * -1; // Radians to degrees
+        float pitch_angle = ypr[2] * 180 / M_PI; // Radians to degrees
+
+        // Convert gyro angles to servo outputs
+        float roll_signal = map(roll_angle, -90, 90, 0, 180);
+        float pitch_signal = map(pitch_angle, -90, 90, 0, 180);
+
+        // Mix for right elevon
+        float ch3_mix = abs((roll_signal + pitch_signal) * 0.5);
+  
+        if (pitch_angle > 0) {
+          pitch_signal = map(pitch_angle, 90, -90, 0, 180);
+        } else if (pitch_angle < 0) {
+          pitch_signal = map(pitch_angle, -90, 90, 180, 0);
+        }
+
+        // Mix for left elevon
+        float ch2_mix = abs((roll_signal + pitch_signal) * 0.5);
+  
+//        Serial.print("Pitch: ");
+//        Serial.print(pitch_signal);
+//        Serial.print("\t Roll: ");
+//        Serial.print(roll_signal);
+//        Serial.print("\t Ch2 mix: ");
+//        Serial.print(ch2_mix);
+//        Serial.print("\t Ch3 mix: ");
+//        Serial.println(ch3_mix);
+
+        // Write the stabilized values to the servos
+        ch2Servo.write(ch2_mix);
+        ch3Servo.write(ch3_mix);
       }
-
-      float ch2_mix = abs((roll_signal + pitch_signal) * 0.5);
-
-      Serial.print("Pitch: ");
-      Serial.print(pitch_signal);
-      Serial.print("\t Roll: ");
-      Serial.print(roll_signal);
-      Serial.print("\t Ch2 mix: ");
-      Serial.print(ch2_mix);
-      Serial.print("\t Ch3 mix: ");
-      Serial.println(ch3_mix);
-
-      ch2Servo.write(ch2_mix);
-      ch3Servo.write(ch3_mix);
 
     // We're in manual mode so let the values pass through to the servos
     } else {
 
-      float invert_ch_2 = map(receiver_ch_2, 1000, 2000, 2000, 1000);
-
-      // Write these values to the servo
-      ch2Servo.writeMicroseconds(invert_ch_2);
-      ch3Servo.writeMicroseconds(receiver_ch_3);
+      applyManualInput();
       
     }
     
   }
+}
+
+void applyManualInput() {
+  Serial.print(receiver_ch_2);
+  Serial.print("\t");
+  Serial.println(receiver_ch_3);
+  
+  float invert_ch_2 = map(receiver_ch_2, 1000, 2000, 2000, 1000);
+  // Write these values to the servo
+  ch2Servo.writeMicroseconds(invert_ch_2);
+  ch3Servo.writeMicroseconds(receiver_ch_3);
 }
 
 // For port numbers with Arduino Micro refer to these:
