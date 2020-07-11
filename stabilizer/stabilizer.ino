@@ -192,6 +192,8 @@ void loop() {
     Serial.println(ypr[1] * 180 / M_PI);*/
 
     // We're in stablize mode because the auxiliary channel is high
+    receiver_ch_5 = 1501;
+    
     if(receiver_ch_5 > 1500) {
 
       // Let's use the gyro to stabilize the servos
@@ -200,15 +202,15 @@ void loop() {
       float roll_signal = map(roll_angle, -90, 90, 0, 180);
       float pitch_signal = map(pitch_angle, -90, 90, 0, 180);
 
-      float ch3_mix = abs((roll_signal + pitch_signal) / 2);
+      float ch3_mix = abs((roll_signal + pitch_signal) * 0.5);
 
       if (pitch_angle > 0) {
-        pitch_signal = map(pitch_angle, -90, 90, 180, 0);
-      } else if (pitch_angle < 0) {
         pitch_signal = map(pitch_angle, 90, -90, 0, 180);
+      } else if (pitch_angle < 0) {
+        pitch_signal = map(pitch_angle, -90, 90, 180, 0);
       }
 
-      float ch2_mix = abs((roll_signal + pitch_signal) / 2);
+      float ch2_mix = abs((roll_signal + pitch_signal) * 0.5);
 
       Serial.print("Pitch: ");
       Serial.print(pitch_signal);
