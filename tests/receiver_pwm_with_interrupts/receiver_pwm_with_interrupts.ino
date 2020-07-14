@@ -6,11 +6,14 @@ unsigned long ch1_timer, ch2_timer, ch3_timer, current_time;
 
 void setup() {
 
+  // Initialize the serial port
+  Serial.begin(115200);
+
   // Setup interrupts for Arduino Micro
   PCICR |= (1 << PCIE0);    // set PCIE0 to enable PCMSK0 scan
-  PCMSK0 |= (1 << PCINT4);  // set PCINT4 (digital input 8)
-  PCMSK0 |= (1 << PCINT5);  // set PCINT5 (digital input 9)
-  PCMSK0 |= (1 << PCINT6);  // set PCINT2 (digital input 10)
+  PCMSK0 |= (1 << PCINT0);  // set PCINT4 (digital input 8)
+  PCMSK0 |= (1 << PCINT1);  // set PCINT5 (digital input 9)
+  PCMSK0 |= (1 << PCINT2);  // set PCINT2 (digital input 10)
   
 }
 
@@ -32,7 +35,7 @@ ISR(PCINT0_vect) {
   current_time = micros();
 
   // Throttle = digital pin 8 (PB4)
-  if(PINB & B00010000) {                                   // Pin 8 (PB4) is high
+  if(PINB & B00000001) {                                   // Pin 8 (PB4) is high
     if(last_ch1 == 0){                                   // Input 8 went high
       last_ch1 = 1;                                      // Store current state
       ch1_timer = current_time;                              // Set the timer
@@ -43,7 +46,7 @@ ISR(PCINT0_vect) {
   }
 
   // Left elevon = digital pin 9 (PB5)
-  if(PINB & B00100000) {                                       //Is input 9 high?
+  if(PINB & B00000010) {                                       //Is input 9 high?
     if(last_ch2 == 0){                                   //Input 9 changed from 0 to 1
       last_ch2 = 1;                                      //Remember current input state
       ch2_timer = current_time;                                  //Set timer_2 to current_time
@@ -54,7 +57,7 @@ ISR(PCINT0_vect) {
   }
 
   // Right elevon = digital pin 10 (PB6)
-  if(PINB & B01000000) {                                       //Is input 10 high?
+  if(PINB & B00000100) {                                       //Is input 10 high?
     if(last_ch3 == 0){                                   //Input 10 changed from 0 to 1
       last_ch3 = 1;                                      //Remember current input state
       ch3_timer = current_time;                                  //Set timer_3 to current_time
