@@ -3,6 +3,7 @@
 MPU6050 mpu(Wire);
 
 void setup() {
+  Serial.begin(115200);
   Wire.begin();
   mpu.begin();
   mpu.calcGyroOffsets();
