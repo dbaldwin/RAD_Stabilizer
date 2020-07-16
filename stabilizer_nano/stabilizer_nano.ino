@@ -144,6 +144,7 @@ void setup() {
 // ================================================================
 
 void loop() {
+  
   // if programming failed, don't try to do anything
   if (!dmpReady) return;
 
@@ -187,6 +188,12 @@ void loop() {
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+
+
+    // Uncomment these for bench testing so we don't have to worry about aux input
+//    receiver_ch_5 = 1501;
+//    receiver_ch_2 = 1500;
+//    receiver_ch_3 = 1500;
 
     // We're in stablize mode because the auxiliary channel is high
     if(receiver_ch_5 > 1500) {
