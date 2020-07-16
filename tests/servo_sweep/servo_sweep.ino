@@ -15,13 +15,15 @@ int direction = 1;
 
 void setup() {
 
+  Serial.begin(9600);
+
   // Setup servos on digital pins 5 and 6
   leftElevon.attach(5);
   rightElevon.attach(6);
 
   // Reset the servos
-  leftElevon.write(0);
-  rightElevon.write(0);
+  leftElevon.write(counter);
+  rightElevon.write(counter);
 
 }
 
